@@ -22,7 +22,7 @@
         }
     </style>
 </head>
-<body onload="initialize()">
+<body>
     <div class="body">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
             <a class="navbar-brand" href="{{ url_for('index') }}">Polar Database</a>
@@ -50,7 +50,7 @@
                     <h3>Pipeline Output Paths</h3>
                 </div>
                 <div class="col-auto">
-                    <button class="btn" onclick="editToggle()">
+                    <button class="btn" onclick="editToggle('Path')">
                         <img src="{{ url_for('static', filename='gear.png') }}" alt="Gear Icon" class="img-fluid" style="height: 30px;">
                     </button>
                 </div>
@@ -58,14 +58,16 @@
             <div class="row mb-3">
                 <div class="container">
                     <div class="card" style="padding: 1rem;">
-                        {% for path in pipeline_paths %}
-                            <div class="input-group mb-2">
-                                <input class="form-control pathField" type="text" value="{{ path }}" disabled>
-                                <button class="btn btn-danger deletePathButton" type="button" style="display: none;">Delete</button>
-                            </div>
-                        {% endfor %}
-                        <button class="btn btn-primary mb-2 newPathButton" style="display: none;">Add New</button>
-                        <button class="btn btn-primary confirmPathButton" style="display: none;">Confirm</button>
+                        <div id="PathContainer">
+                            {% for path in pipeline_paths %}
+                                <div class="input-group mb-2">
+                                    <input class="form-control PathField" type="text" value="{{ path }}" disabled>
+                                    <button class="btn btn-danger deletePathButton" type="button" style="display: none;">Delete</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="btn btn-primary mb-2 newPathButton" style="display: none;" onclick="addNewPath('Path')">Add New</button>
+                        <button class="btn btn-primary confirmPathButton" style="display: none;" onclick="confirmChanges('Path')">Confirm</button>
                     </div>
                 </div>
             </div>
@@ -74,7 +76,7 @@
                     <h3>Merged Paths</h3>
                 </div>
                 <div class="col-auto">
-                    <button class="btn" onclick="editToggle()">
+                    <button class="btn" onclick="editToggle('Merged')">
                         <img src="{{ url_for('static', filename='gear.png') }}" alt="Gear Icon" class="img-fluid" style="height: 30px;">
                     </button>
                 </div>
@@ -82,14 +84,16 @@
             <div class="row mb-3">
                 <div class="container">
                     <div class="card" style="padding: 1rem;">
-                        {% for path in merged_paths %}
-                            <div class="input-group mb-2">
-                                <input class="form-control mergedField" type="text" value="{{ path }}" disabled>
-                                <button class="btn btn-danger deleteMergedButton" type="button" style="display: none;">Delete</button>
-                            </div>
-                        {% endfor %}
-                        <button class="btn btn-primary mb-2 newMergedButton" style="display: none;">Add New</button>
-                        <button class="btn btn-primary confirmMergedButton" style="display: none;">Confirm</button>
+                        <div id="MergedContainer">
+                            {% for path in merged_paths %}
+                                <div class="input-group mb-2">
+                                    <input class="form-control MergedField" type="text" value="{{ path }}" disabled>
+                                    <button class="btn btn-danger deleteMergedButton" type="button" style="display: none;">Delete</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="btn btn-primary mb-2 newMergedButton" style="display: none;" onclick="addNewPath('Merged')">Add New</button>
+                        <button class="btn btn-primary confirmMergedButton" style="display: none;" onclick="confirmChanges('Merged')">Confirm</button>
                     </div>
                 </div>
             </div>
@@ -98,7 +102,7 @@
                     <h3>Data Paths</h3>
                 </div>
                 <div class="col-auto">
-                    <button class="btn" onclick="editToggle()">
+                    <button class="btn" onclick="editToggle('Data')">
                         <img src="{{ url_for('static', filename='gear.png') }}" alt="Gear Icon" class="img-fluid" style="height: 30px;">
                     </button>
                 </div>
@@ -106,14 +110,16 @@
             <div class="row mb-3">
                 <div class="container">
                     <div class="card" style="padding: 1rem;">
-                        {% for path in data_paths %}
-                            <div class="input-group mb-2">
-                                <input class="form-control dataField" type="text" value="{{ path }}" disabled>
-                                <button class="btn btn-danger deleteDataButton" type="button" style="display: none;">Delete</button>
-                            </div>
-                        {% endfor %}
-                        <button class="btn btn-primary mb-2 newDataButton" style="display: none;">Add New</button>
-                        <button class="btn btn-primary confirmDataButton" style="display: none;">Confirm</button>
+                        <div id="DataContainer">
+                            {% for path in data_paths %}
+                                <div class="input-group mb-2">
+                                    <input class="form-control DataField" type="text" value="{{ path }}" disabled>
+                                    <button class="btn btn-danger deleteDataButton" type="button" style="display: none;">Delete</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button class="btn btn-primary mb-2 newDataButton" style="display: none;" onclick="addNewPath('Data')">Add New</button>
+                        <button class="btn btn-primary confirmDataButton" style="display: none;" onclick="confirmChanges('Data')">Confirm</button>
                     </div>
                 </div>
             </div>
@@ -124,26 +130,76 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <script>
-        function initialize(){
-            $('.newPathButton').each(function() {
-                $(this).hide()
-            });
-        }
+        $(document).ready(function() {
+            $('.PathField').prop('disabled', true);
+            $('.MergedField').prop('disabled', true);
+            $('.DataField').prop('disabled', true);
+        });
 
-        function editToggle(){
-            $('.pathField').each(function() {
+        function editToggle(path_type){
+            $('.'+path_type+'Field').each(function() {
                 $(this).prop('disabled', function(i, value) {
                     return !value;
                 });
             });
-            $('.newPathButton').each(function() {
+            $('.new'+path_type+'Button').each(function() {
                 $(this).toggle();
             });
-            $('.confirmPathButton').each(function() {
+            $('.confirm'+path_type+'Button').each(function() {
                 $(this).toggle();
             });
-            $('.deletePathButton').each(function(){
+            $('.delete'+path_type+'Button').each(function(){
                 $(this).toggle();
+            });
+
+            deletePath(path_type);
+        }
+
+        function addNewPath(path_type){
+            var inputline = `
+            <div class="input-group mb-2">
+                <input class="form-control `+path_type+`Field" type="text" value="">
+                <button class="btn btn-danger delete`+path_type+`Button" type="button" onclick="deletePath('`+path_type+`')">Delete</button>
+            </div>
+            `
+            var text_input_container = document.getElementById(path_type+'Container');
+            text_input_container.insertAdjacentHTML('beforeend', inputline);
+            deletePath(path_type);
+        }
+
+        function confirmChanges(path_type){
+            var paths = []
+            $('.'+path_type+'Field').each(function() {
+                if($(this)[0].value !== ''){
+                    paths.push($(this)[0].value);
+                }else{
+                    $(this).closest('.input-group').remove();
+                }
+            });
+
+            $.ajax({
+                url: '/update_paths',
+                type: 'POST',
+                data: JSON.stringify({
+                    path_type: path_type,
+                    path_list: paths
+                }),
+                contentType: 'application/json',
+                success: function(response) {
+                    editToggle(path_type);
+                },
+                error: function(xhr, status, error) {
+                    var errorMessage = xhr.responseJSON.error;
+                    alert(errorMessage);
+                }
+            });
+
+            
+        }
+
+        function deletePath(path_type){
+            $('.delete'+path_type+'Button').on('click', function() {
+                $(this).closest('.input-group').remove();
             });
         }
     </script>

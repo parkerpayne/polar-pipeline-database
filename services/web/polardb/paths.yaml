@@ -1,9 +1,11 @@
-pipeline_paths:
-  - /mnt/synology3/polar_pipeline
-  - /mnt/synology4/polar_pipeline
-
-merged_paths:
-  - /mnt/synology3/merged
-
 data_paths:
-  - /mnt/synology3/data
+- /mnt/synology2/data.P2solo
+- /mnt/synology3/data.P24
+- /mnt/synology4/data.P24
+merged_paths:
+- /mnt/synology2/MERGED_fastq.gz_files
+- /mnt/synology3/MERGED_fastq.gz_files
+- /mnt/synology4/MERGED_fastq.gz_files
+pipeline_paths:
+- /mnt/synology3/polar_pipeline
+- /mnt/synology4/polar_pipeline

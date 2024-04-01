@@ -51,9 +51,11 @@ def index():
     
 @app.route('/guys')
 def guys():
-    output_directories = ['/mnt/synology3/polar_pipeline', '/mnt/synology4/polar_pipeline']
-    merged_fastq_directories = ['/mnt/synology3/MERGED_fastq.gz_files', '/mnt/synology4/MERGED_fastq.gz_files']
-    data_folder_directories = ['/mnt/synology3/data.P24', '/mnt/synology4/data.P24']
+    with open('/usr/src/app/polardb/paths.yaml', 'r') as yaml_file:
+        data = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    output_directories = data['pipeline_paths']
+    merged_fastq_directories = data['merged_paths']
+    data_folder_directories = data['data_paths']
     try:
         conn = psycopg2.connect(**db_config)
         cursor = conn.cursor()
@@ -71,6 +73,13 @@ def guys():
         for fastq in stored_fastqs:
             if not os.path.isfile(fastq[1]):
                 cursor.execute("DELETE FROM fastqs WHERE fastq_uid = %s", (fastq[0],))
+
+        cursor.execute("SELECT folder_uid, folder_path FROM data_folders")
+        stored_folders = cursor.fetchall()
+        # print(stored_runs)
+        for data_folder in stored_folders:
+            if not os.path.isfile(data_folder[1]):
+                cursor.execute("DELETE FROM data_folders WHERE folder_uid = %s", (data_folder[0],))
         
         # cursor.execute("SELECT g.uid, g.initials FROM guys g LEFT JOIN runs r ON g.uid = r.guy_uid WHERE r.run_uid IS NULL")
         # empty_guys = cursor.fetchall()
@@ -211,6 +220,58 @@ def guys():
         return render_template('guys.html', entries=entries, guylen=guylen)
     except Exception as e:
         return f"Error: {e}"
+    
+# @app.route('/guys')
+# def guys():
+#     try:
+#         conn = psycopg2.connect(**db_config)
+#         cursor = conn.cursor()
+#             # Retrieve all entries from the database
+#         cursor.execute("SELECT * FROM guys ORDER BY initials")
+#         select = cursor.fetchall()
+#         entries = []
+#         for line in select:
+
+#             try:
+#                 cursor.execute("SELECT DISTINCT run_type FROM runs WHERE guy_uid = %s", (line[0],))
+#                 all_run_types = cursor.fetchall()
+#                 all_run_types_flat = [run_type[0] for run_type in all_run_types]
+#                 cursor.execute("SELECT COUNT(*) FROM runs WHERE guy_uid = %s;", (line[0],))
+#                 num_runs_for_guy = cursor.fetchone()[0]
+#                 cursor.execute("SELECT COUNT(*) FROM fastqs WHERE guy_uid = %s;", (line[0],))
+#                 num_fastqs_for_guy = cursor.fetchone()[0]
+#                 cursor.execute("SELECT COUNT(*) FROM data_folders WHERE guy_uid = %s;", (line[0],))
+#                 num_data_folders_for_guy = cursor.fetchone()[0]
+#                 # print(all_run_types_flat)
+#             except Exception as e:
+#                 return f"Error: {e}"
+#             entry = []
+#             entry.append(line[0])
+#             entry.append(line[1])
+#             entry.append(line[2])
+#             entry.append(num_runs_for_guy)
+#             if 'GRCh38' in all_run_types_flat:
+#                 entry.append('checked')
+#             else:
+#                 entry.append('')
+#             if 'T2T' in all_run_types_flat:
+#                 entry.append('checked')
+#             else:
+#                 entry.append('')
+#             entry.append(num_fastqs_for_guy)
+#             entry.append(line[3].strftime('%Y-%m-%d'))
+#             entry.append(num_data_folders_for_guy)
+#             entries.append(entry)
+
+#         # print(entries)
+#         cursor.close()
+#         conn.close()
+
+#         guylen = len(entries)
+
+#         return render_template('guys.html', entries=entries, guylen=guylen)
+#     except Exception as e:
+#         return f"Error: {e}"
 
 @app.route('/guys/<uid>')
 def info(uid):
@@ -238,8 +299,26 @@ def info(uid):
             matched_fastqs = []
             matches = re.findall(fastq_pattern, result[0])
             for fetched_fastq in fetched_fastqs:
-                if matches[0].replace('_T2T', '').replace('_sorted', '') in fetched_fastq[0]:
+                if matches[0].split('_T2T')[0].split('_sorted')[0] in fetched_fastq[0]:
                     matched_fastqs.append(fetched_fastq[1])
+            other_run_name = ''
+            if not matched_fastqs:
+                moved_id_pattern = r'MERGED_[A-Za-z]{2,3}_\d{7}'
+                date_pattern = r'_\d{4}-\d{2}-\d{2}'
+                moved_name_matches = re.findall(moved_id_pattern, result[0])
+                if moved_name_matches:
+                    id_to_move = moved_name_matches[0].replace('MERGED', '')
+                    work_in_progress = result[0].replace(id_to_move, '')
+                    dates_in_name = re.findall(date_pattern, work_in_progress)
+                    if dates_in_name:
+                        last_date = dates_in_name[-1]
+                        other_run_name = work_in_progress.replace(last_date, last_date+id_to_move)
+            if other_run_name:
+                matched_fastqs = []
+                matches = re.findall(fastq_pattern, other_run_name)
+                for fetched_fastq in fetched_fastqs:
+                    if matches[0].split('_T2T')[0].split('_sorted')[0] in fetched_fastq[0]:
+                        matched_fastqs.append(fetched_fastq[1])
             run.append(matched_fastqs)
             runs.append(run)
         # print(runs)
@@ -286,3 +365,33 @@ def config():
     merged_paths = data['merged_paths']
     data_paths = data['data_paths']
     return render_template('config.html', pipeline_paths=pipeline_paths, merged_paths=merged_paths, data_paths=data_paths)
+
+@app.route('/update_paths', methods=['POST'])
+def update_paths():
+    path_type = request.json.get("path_type")
+    path_list = request.json.get("path_list")
+    # print(path_type)
+    # print(path_list)
+    invalid_paths = [path for path in path_list if not os.path.isdir(path) and not path=='']
+    if invalid_paths:
+        error_message = f'Invalid path(s): {", ".join(invalid_paths)}'
+        return jsonify({'error': error_message}), 400
+
+    with open('/usr/src/app/polardb/paths.yaml', 'r') as yaml_file:
+        data = yaml.load(yaml_file, Loader=yaml.FullLoader)
+    pipeline_paths = data['pipeline_paths']
+    merged_paths = data['merged_paths']
+    data_paths = data['data_paths']
+
+    match path_type:
+        case 'Path':
+            pipeline_paths = path_list
+        case 'Merged':
+            merged_paths = path_list
+        case 'Data':
+            data_paths = path_list
+    
+    with open('/usr/src/app/polardb/paths.yaml', 'w') as yaml_file:
+        yaml.dump({'pipeline_paths': pipeline_paths, 'merged_paths': merged_paths, 'data_paths': data_paths}, yaml_file)
+
+    return 'success'
