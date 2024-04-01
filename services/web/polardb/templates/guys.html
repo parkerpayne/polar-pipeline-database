@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polar Database</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <style>
+        .navbar {
+            background-color: #333;
+            padding: 1rem;
+        }
+        
+        .navbar .nav-link {
+            color: #ddd;
+        }
+        
+        .navbar .nav-link:hover {
+            color: #fff;
+        }
+        .disable-click {
+            pointer-events: none;
+        }
+        .special-card {
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .special-card:hover {
+            border-color: #61a0ff;
+            box-shadow: 0 0 10px 5px #85c8ff; /* Adjust values as needed */
+        }
+        .special-card a {
+            text-decoration: none;
+            text-decoration-line: none;
+        }
+        .special-card-link {
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+        }
+        .toggle-button {
+            background-color: #ccc;
+            color: #444;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            position: relative;
+        }
+        .dropdown-toggle {
+            background-color: #ccc;
+            color: #444;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            position: relative;
+        }
+
+        .toggle-button.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .dropdown-toggle.active{
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .show-arrow {
+            display: none;
+        }
+
+    </style>
+</head>
+<body onload="countGuys()">
+    <div class="body">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Polar Database</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('guys') }}">Guys</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('config') }}">Config</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        
+        
+        <div class="container mt-3">
+            <div class="row">
+                <form class="mb-2">
+                    <input class="form-control" type="text" id="searchInput" placeholder="Search...">
+                </form>
+            </div>
+
+            <button class="btn btn-secondary toggle-button active mb-3" id="filterButtons" value="az" onclick="toggleButton(this)">
+                AZ
+                <span id="up-arrow">&#9660;</span>
+                <span id="down-arrow" class="show-arrow">&#9650;</span>
+            </button>
+            <button class="btn btn-secondary dropdown-toggle mb-3" id="typeDropdown" value="type" data-bs-toggle="dropdown" aria-expanded="false">
+                Type
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="typeDropdown">
+                <li>
+                    <div class="form-check" style="margin-left: 0.5rem;">
+                        <input class="form-check-input" type="checkbox" id="dropdownGRCh38"  value="GRCh38" onclick="typeFilter(this)">
+                        <label class="form-check-label" for="dropdownGRCh38" onclick="stopEventPropagation(event)">
+                            GRCh38
+                        </label>
+                    </div>
+                </li>
+                <li>
+                    <div class="form-check" style="margin-left: 0.5rem;">
+                        <input class="form-check-input" type="checkbox" id="dropdownT2T" value="T2T" onclick="typeFilter(this)">
+                        <label class="form-check-label" for="dropdownT2T" onclick="stopEventPropagation(event)">
+                            T2T
+                        </label>
+                    </div>
+                </li>
+                <li>
+                    <div class="form-check" style="margin-left: 0.5rem;">
+                        <input class="form-check-input" type="checkbox" id="dropdownAny" value="Any" onclick="typeFilter(this)" checked>
+                        <label class="form-check-label" for="dropdownAny" onclick="stopEventPropagation(event)">
+                            Any
+                        </label>
+                    </div>
+                </li>
+            </ul>
+            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="run" onclick="toggleButton(this)">
+                Runs
+                <span id="up-arrow" class="">&#9660;</span>
+                <span id="down-arrow" class="show-arrow">&#9650;</span>
+            </button>
+            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="fastq" onclick="toggleButton(this)">
+                Fastq
+                <span id="up-arrow" class="">&#9660;</span>
+                <span id="down-arrow" class="show-arrow">&#9650;</span>
+            </button>
+            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="data" onclick="toggleButton(this)">
+                Data
+                <span id="up-arrow" class="">&#9660;</span>
+                <span id="down-arrow" class="show-arrow">&#9650;</span>
+            </button>
+            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="date" onclick="toggleButton(this)">
+                Date
+                <span id="up-arrow" class="">&#9660;</span>
+                <span id="down-arrow" class="show-arrow">&#9650;</span>
+            </button>
+
+            <div class="row" id="cardContainer">
+                {% for guy in entries %}
+                <a href="/guys/{{ guy[0] }}" id="guy-card" class="special-card-link">
+                    <div id="guy-inner-card" class="card special-card mb-3">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="row" id="az">
+                                        <h4 class="card-title large-text">{{ guy[1] }}</h4>
+                                    </div>
+                                    <div class="row">
+                                        <p class="card-text">{{ guy[2] }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <!-- Grid of checkboxes here -->
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="checkbox" value="" id="grchBox" {{ guy[4] }}>
+                                        <label class="form-check-label disable-click" for="grchBox">
+                                            GRCh38
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="checkbox" value="" id="t2tBox" {{ guy[5] }}>
+                                        <label class="form-check-label disable-click" for="t2tBox">
+                                            T2T
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="row">
+                                        <p>Total Runs</p>
+                                    </div>
+                                    <div class="row" id="run">
+                                        <h6>{{ guy[3] }}</h6>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="row">
+                                        <p>Fastqs</p>
+                                    </div>
+                                    <div class="row" id="fastq">
+                                        <h6>{{ guy[6] }}</h6>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="row">
+                                        <p>Data Folders</p>
+                                    </div>
+                                    <div class="row" id="data">
+                                        <h6>{{ guy[8] }}</h6>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <div class="row">
+                                        <p>Date</p>
+                                    </div>
+                                    <div class="row" id="date">
+                                        <h6>{{ guy[7] }}</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            <p id="total-count" class="mb-5"></p>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        $(document).ready(function(){
+            $('#searchInput').on('keyup', function(){
+                var searchText = $(this).val().toLowerCase();
+                $('#cardContainer .card').each(function(){
+                    var initials = $(this).find('.card-title').text().toLowerCase();
+                    var id = $(this).find('.card-text').text().toLowerCase();
+                    if(initials.indexOf(searchText) === -1 && id.indexOf(searchText) === -1){
+                        $(this).hide();
+                    }else{
+                        $(this).show();
+                    }
+                });
+                countGuys();
+            });
+        });
+
+        function typeFilter(checkbox){
+            const grchBox = $('#dropdownGRCh38');
+            const t2tBox = $('#dropdownT2T');
+            const anyBox = $('#dropdownAny');  
+            const typeDropdown = document.getElementById('typeDropdown');          
+            const runType = checkbox.value;
+        
+            if(runType == 'Any'){
+                grchBox.prop('checked', false);
+                t2tBox.prop('checked', false);
+            } else {
+                anyBox.prop('checked', false);
+            }
+            
+            $('#cardContainer .card').each(function(){
+                var guyGRChBox = $(this).find('#grchBox');
+                var guyT2TBox = $(this).find('#t2tBox');
+                
+                if(anyBox.prop('checked')){
+                    $(this).show();
+                } else {
+                    var valid = true;
+                    if(guyGRChBox.prop('checked') !== grchBox.prop('checked')){
+                        valid = false;
+                    }
+                    if(guyT2TBox.prop('checked') !== t2tBox.prop('checked')){
+                        valid = false;
+                    }
+                    if(valid == false){
+                        $(this).hide();
+                    } else {
+                        $(this).show();
+                    }
+                }
+            });
+
+            if(!grchBox.prop('checked') && !t2tBox.prop('checked') && anyBox.prop('checked')){
+                typeDropdown.classList.remove('active');
+            }else{
+                typeDropdown.classList.add('active');
+            }
+    
+            countGuys();
+        }
+
+        function countGuys() {
+            var cardlist = document.querySelectorAll('#guy-inner-card');
+            let count = 0;
+            cardlist.forEach(element => {
+                const computedStyle = window.getComputedStyle(element);
+                if (computedStyle.display !== 'none') {
+                    count++;
+                }
+            });
+            var totaltext = document.getElementById('total-count');
+            totaltext.innerText = 'Total: ' + count;
+        }
+
+        function getCardValue(card, category){
+            var val = Array.from(card.querySelectorAll('#'+category))[0].innerText;
+            return val
+        }
+
+        function sortGuys(category, direction){
+            // console.log(category, direction);
+            var guyresult = document.querySelectorAll('#guy-card');
+            var guys = Array.from(guyresult);
+            // console.log(guys);
+            var sortedList = [];
+
+            while (guys.length > 0) {
+                var max = -1;
+                var max_index = -1;
+                var index = 0;
+                guys.forEach(element => {
+                    var cardVal = getCardValue(element, category);
+                    if(max == -1){
+                        max = cardVal;
+                        max_index = index;
+                    }
+                    if(category == 'az'){
+                        if(cardVal < max){
+                            max = cardVal;
+                            max_index = index;
+                        }
+                    }else{
+                        if(cardVal > max){
+                            max = cardVal;
+                            max_index = index;
+                        }
+                    }
+                    
+                    index++;
+                });
+                sortedList.push(guys[max_index]);
+                guys.splice(max_index, 1);
+            }
+            const cardCont = document.getElementById('cardContainer');
+            while (cardCont.firstChild) {
+                cardCont.removeChild(cardCont.firstChild);
+            }
+            while(sortedList[0]){
+                // console.log(sortedList[0]);
+                if(direction == 'up-arrow'){
+                    cardCont.appendChild(sortedList[sortedList.length-1]);
+                    sortedList.splice(sortedList.length-1, 1);
+                }else{
+                    cardCont.appendChild(sortedList[0]);
+                    sortedList.splice(0,1);
+                }
+                
+            }
+        }  
+
+        function toggleButton(button) {
+            if(button.classList.contains('active')){
+                var arrows = button.children;
+                var activeArrow = button.firstChild;
+                Array.from(arrows).forEach(element => {
+                    element.classList.toggle('show-arrow');
+                    if(element.classList.contains('show-arrow')){
+                        sortGuys(button.value, element.id);
+                    }
+                });
+
+            }else{
+                const filterButtons = document.querySelectorAll("#filterButtons");
+                filterButtons.forEach(element => {
+                    if(element.classList.contains('active')){
+                        element.classList.remove('active');
+                        var uparrow = element.children[0];
+                        var downarrow = element.children[1];
+                        if(!downarrow.classList.contains('show-arrow')){
+                            downarrow.classList.add('show-arrow');
+                        }
+                        if(uparrow.classList.contains('show-arrow')){
+                            uparrow.classList.remove('show-arrow');
+                        }
+                    }
+                });
+                button.classList.add('active');
+                sortGuys(button.value, 'down-arrow');
+            }
+        }
+        function stopEventPropagation(event) {
+            event.stopPropagation();
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>

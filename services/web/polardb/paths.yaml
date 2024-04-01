@@ -1,0 +1,9 @@
+pipeline_paths:
+  - /mnt/synology3/polar_pipeline
+  - /mnt/synology4/polar_pipeline
+
+merged_paths:
+  - /mnt/synology3/merged
+
+data_paths:
+  - /mnt/synology3/data
