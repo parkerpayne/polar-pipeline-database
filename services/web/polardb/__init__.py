@@ -3,19 +3,9 @@ sys.path.append('/usr/src/app/polarpipeline')
 
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from wtforms import StringField, SubmitField
-from flask_wtf import FlaskForm
 from datetime import datetime
-import urllib.parse
-import configparser
-import pandas as pd
-import subprocess
 import psycopg2
-import hashlib
-import time
 import yaml
-import svg
-import ast
 import os
 import re
 
@@ -48,9 +38,15 @@ def index():
     return redirect(url_for('guys'))
     return render_template('index.html')
 
-    
+cached_pipeline_state = []
+cached_merged_state = []
+cached_data_state = []
+
 @app.route('/guys')
 def guys():
+    global cached_pipeline_state
+    global cached_merged_state
+    global cached_data_state
     with open('/usr/src/app/polardb/paths.yaml', 'r') as yaml_file:
         data = yaml.load(yaml_file, Loader=yaml.FullLoader)
     output_directories = data['pipeline_paths']
@@ -90,51 +86,92 @@ def guys():
         datepattern = r'\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}'
         seq_datepattern = r'\d{4}-\d{2}-\d{2}'
         
+        current_pipeline_state = []
         for output_directory in output_directories:
-            for item in os.listdir(output_directory):
-                matches = re.findall(pattern, item)
-                if matches:
-                    initials, id = matches[0].split('_')
-                    # print(initials, id)
-                    t2t = 'GRCh38'
-                    if 't2t' in item.lower():
-                        t2t = 'T2T'
-                    datematches = re.findall(datepattern, item)
-                    seq_dates = re.findall(seq_datepattern, item)
-                    # print(seq_dates, min(seq_dates))
-                    seq_date = datetime.strptime(min(seq_dates), '%Y-%m-%d')
+            current_pipeline_state.append(os.listdir(output_directory))
+        
+        current_merged_state = []
+        for merged_fastq_directory in merged_fastq_directories:
+            for root, dirs, files in os.walk(merged_fastq_directory):
+                current_merged_state.append(files)
+        
+        current_data_state = []
+        for data_folder_directory in data_folder_directories:
+            current_data_state.append(os.listdir(data_folder_directory))
 
-                    pipe_tmstmp = datematches[0]
-                    date_obj = datetime.strptime(pipe_tmstmp, '%Y-%m-%d_%H-%M-%S')
-
-                    # Check if uid already exists in the database
-                    cursor.execute("SELECT uid FROM guys WHERE initials = %s AND id = %s", (initials, id))
-                    existing_uid = cursor.fetchone()
-                    
-                    if not existing_uid:
+        if current_pipeline_state != cached_pipeline_state:
+            cached_pipeline_state = current_pipeline_state
+            for output_directory in output_directories:
+                for item in os.listdir(output_directory):
+                    matches = re.findall(pattern, item)
+                    if matches:
+                        initials, id = matches[0].split('_')
+                        # print(initials, id)
+                        t2t = 'GRCh38'
+                        if 't2t' in item.lower():
+                            t2t = 'T2T'
+                        datematches = re.findall(datepattern, item)
                         seq_dates = re.findall(seq_datepattern, item)
                         # print(seq_dates, min(seq_dates))
                         seq_date = datetime.strptime(min(seq_dates), '%Y-%m-%d')
-                        # If uid not in guys, insert into the database
-                        cursor.execute("INSERT INTO guys (initials, id, seq_date) VALUES (%s, %s, %s) RETURNING uid", (initials, id, seq_date))
+
+                        pipe_tmstmp = datematches[0]
+                        date_obj = datetime.strptime(pipe_tmstmp, '%Y-%m-%d_%H-%M-%S')
+
+                        # Check if uid already exists in the database
+                        cursor.execute("SELECT uid FROM guys WHERE initials = %s AND id = %s", (initials, id))
                         existing_uid = cursor.fetchone()
+                        
+                        if not existing_uid:
+                            seq_dates = re.findall(seq_datepattern, item)
+                            # print(seq_dates, min(seq_dates))
+                            seq_date = datetime.strptime(min(seq_dates), '%Y-%m-%d')
+                            # If uid not in guys, insert into the database
+                            cursor.execute("INSERT INTO guys (initials, id, seq_date) VALUES (%s, %s, %s) RETURNING uid", (initials, id, seq_date))
+                            existing_uid = cursor.fetchone()
 
-                    cursor.execute("SELECT run_uid FROM runs WHERE guy_uid = %s AND run_name = %s AND run_path = %s AND run_type = %s AND run_time = %s", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj))
-                    existing_run_uid = cursor.fetchone()
+                        cursor.execute("SELECT run_uid FROM runs WHERE guy_uid = %s AND run_name = %s AND run_path = %s AND run_type = %s AND run_time = %s", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj))
+                        existing_run_uid = cursor.fetchone()
 
-                    if not existing_run_uid:
-                        cursor.execute("INSERT INTO runs (guy_uid, run_name, run_path, run_type, run_time) VALUES (%s, %s, %s, %s, %s)", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj))
+                        if not existing_run_uid:
+                            cursor.execute("INSERT INTO runs (guy_uid, run_name, run_path, run_type, run_time) VALUES (%s, %s, %s, %s, %s)", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj))
+        
+        if current_merged_state != cached_merged_state:
+            cached_merged_state = current_merged_state
+            for merged_fastq_directory in merged_fastq_directories:
+                for root, dirs, files in os.walk(merged_fastq_directory):
+                    for file in files:
+                        matches = re.findall(pattern, file)
+                        if matches:
+                            path = os.path.join(root, file)
+                            initials, id = matches[0].split('_')
 
-        for merged_fastq_directory in merged_fastq_directories:
-            for root, dirs, files in os.walk(merged_fastq_directory):
-                for file in files:
-                    matches = re.findall(pattern, file)
+                            cursor.execute("SELECT uid FROM guys WHERE initials = %s AND id = %s", (initials, id))
+                            existing_uid = cursor.fetchone()
+
+                            if not existing_uid:
+                                seq_dates = re.findall(seq_datepattern, item)
+                                # If uid not in guys, insert into the database
+                                cursor.execute("INSERT INTO guys (initials, id, seq_date) VALUES (%s, %s, %s) RETURNING uid", (initials, id, seq_date))
+                                existing_uid = cursor.fetchone()
+                            
+                            cursor.execute("SELECT fastq_uid FROM fastqs WHERE guy_uid = %s AND fastq_name = %s AND fastq_path = %s", (existing_uid, file, path))
+                            existing_fastq_uid = cursor.fetchone()
+
+                            if not existing_fastq_uid:
+                                cursor.execute("INSERT INTO fastqs (guy_uid, fastq_name, fastq_path) VALUES (%s, %s, %s)", (existing_uid, file, path))
+
+        if current_data_state != cached_data_state:
+            cached_data_state = current_data_state
+            for data_folder in data_folder_directories:
+                for dir in os.listdir(data_folder):
+                    matches = re.findall(pattern, dir)
                     if matches:
-                        path = os.path.join(root, file)
+                        path = os.path.join(data_folder, dir)
                         initials, id = matches[0].split('_')
 
                         cursor.execute("SELECT uid FROM guys WHERE initials = %s AND id = %s", (initials, id))
-                        existing_uid = cursor.fetchone()
+                        existing_uid = cursor.fetchone()    
 
                         if not existing_uid:
                             seq_dates = re.findall(seq_datepattern, item)
@@ -142,33 +179,11 @@ def guys():
                             cursor.execute("INSERT INTO guys (initials, id, seq_date) VALUES (%s, %s, %s) RETURNING uid", (initials, id, seq_date))
                             existing_uid = cursor.fetchone()
                         
-                        cursor.execute("SELECT fastq_uid FROM fastqs WHERE guy_uid = %s AND fastq_name = %s AND fastq_path = %s", (existing_uid, file, path))
+                        cursor.execute("SELECT folder_uid FROM data_folders WHERE guy_uid = %s AND folder_name = %s AND folder_path = %s", (existing_uid, dir, path))
                         existing_fastq_uid = cursor.fetchone()
 
                         if not existing_fastq_uid:
-                            cursor.execute("INSERT INTO fastqs (guy_uid, fastq_name, fastq_path) VALUES (%s, %s, %s)", (existing_uid, file, path))
-
-        for data_folder in data_folder_directories:
-            for dir in os.listdir(data_folder):
-                matches = re.findall(pattern, dir)
-                if matches:
-                    path = os.path.join(data_folder, dir)
-                    initials, id = matches[0].split('_')
-
-                    cursor.execute("SELECT uid FROM guys WHERE initials = %s AND id = %s", (initials, id))
-                    existing_uid = cursor.fetchone()    
-
-                    if not existing_uid:
-                        seq_dates = re.findall(seq_datepattern, item)
-                        # If uid not in guys, insert into the database
-                        cursor.execute("INSERT INTO guys (initials, id, seq_date) VALUES (%s, %s, %s) RETURNING uid", (initials, id, seq_date))
-                        existing_uid = cursor.fetchone()
-                    
-                    cursor.execute("SELECT folder_uid FROM data_folders WHERE guy_uid = %s AND folder_name = %s AND folder_path = %s", (existing_uid, dir, path))
-                    existing_fastq_uid = cursor.fetchone()
-
-                    if not existing_fastq_uid:
-                        cursor.execute("INSERT INTO data_folders (guy_uid, folder_name, folder_path) VALUES (%s, %s, %s)", (existing_uid, dir, path))
+                            cursor.execute("INSERT INTO data_folders (guy_uid, folder_name, folder_path) VALUES (%s, %s, %s)", (existing_uid, dir, path))
 
 
         # Commit the changes to the database
@@ -395,3 +410,40 @@ def update_paths():
         yaml.dump({'pipeline_paths': pipeline_paths, 'merged_paths': merged_paths, 'data_paths': data_paths}, yaml_file)
 
     return 'success'
+
+@app.route('/export')
+def export():
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(uid) FROM guys')
+    uid_count = cursor.fetchone()
+    for i in range(uid_count[0]):
+        cursor.execute('SELECT * FROM guys WHERE uid=%s', (i+1,))
+        guy = cursor.fetchone()
+        guy_info = guy[1]+'_'+guy[2]
+        cursor.execute('SELECT * FROM runs WHERE guy_uid=%s', (guy[0],))
+        runs = cursor.fetchall()
+        runs_results = []
+        for run in runs:
+            # run_result = []
+            # run_result.append(run[3])
+            # runs_results.append(run_result)
+            runs_results.append(run[3])
+        cursor.execute('SELECT * FROM fastqs WHERE guy_uid=%s', (guy[0],))
+        fastqs = cursor.fetchall()
+        fastq_results = []
+        for fastq in fastqs:
+            fastq_results.append(fastq[3])
+        cursor.execute('SELECT * FROM data_folders WHERE guy_uid=%s', (guy[0],))
+        data_folders = cursor.fetchall()
+        data_results = []
+        for data in data_folders:
+            data_results.append(data[3])
+        # print(guy_info)
+        # print(runs_results)
+        # print(fastq_results)
+        # print(data_results)
+        lengths = [len(runs_results), len(fastq_results), len(data_results)]
+        print(guy_info, lengths, max(lengths))
+
+    return jsonify('hi')
