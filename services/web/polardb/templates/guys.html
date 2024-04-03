@@ -27,8 +27,8 @@
             transition: border-color 0.3s, box-shadow 0.3s;
         }
         .special-card:hover {
-            border-color: #61a0ff;
-            box-shadow: 0 0 10px 5px #85c8ff; /* Adjust values as needed */
+            border-color: #77adff;
+            box-shadow: 0 0 10px 5px #60aaff; /* Adjust values as needed */
         }
         .special-card a {
             text-decoration: none;
@@ -99,65 +99,70 @@
                 </form>
             </div>
 
-            <button class="btn btn-secondary toggle-button active mb-3" id="filterButtons" value="az" onclick="toggleButton(this)">
-                AZ
-                <span id="up-arrow">&#9660;</span>
-                <span id="down-arrow" class="show-arrow">&#9650;</span>
-            </button>
-            <button class="btn btn-secondary dropdown-toggle mb-3" id="typeDropdown" value="type" data-bs-toggle="dropdown" aria-expanded="false">
-                Type
-            </button>
-            <ul class="dropdown-menu" aria-labelledby="typeDropdown">
-                <li>
-                    <div class="form-check" style="margin-left: 0.5rem;">
-                        <input class="form-check-input" type="checkbox" id="dropdownGRCh38"  value="GRCh38" onclick="typeFilter(this)">
-                        <label class="form-check-label" for="dropdownGRCh38" onclick="stopEventPropagation(event)">
-                            GRCh38
-                        </label>
-                    </div>
-                </li>
-                <li>
-                    <div class="form-check" style="margin-left: 0.5rem;">
-                        <input class="form-check-input" type="checkbox" id="dropdownT2T" value="T2T" onclick="typeFilter(this)">
-                        <label class="form-check-label" for="dropdownT2T" onclick="stopEventPropagation(event)">
-                            T2T
-                        </label>
-                    </div>
-                </li>
-                <li>
-                    <div class="form-check" style="margin-left: 0.5rem;">
-                        <input class="form-check-input" type="checkbox" id="dropdownAny" value="Any" onclick="typeFilter(this)" checked>
-                        <label class="form-check-label" for="dropdownAny" onclick="stopEventPropagation(event)">
-                            Any
-                        </label>
-                    </div>
-                </li>
-            </ul>
-            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="run" onclick="toggleButton(this)">
-                Runs
-                <span id="up-arrow" class="">&#9660;</span>
-                <span id="down-arrow" class="show-arrow">&#9650;</span>
-            </button>
-            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="fastq" onclick="toggleButton(this)">
-                Fastq
-                <span id="up-arrow" class="">&#9660;</span>
-                <span id="down-arrow" class="show-arrow">&#9650;</span>
-            </button>
-            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="data" onclick="toggleButton(this)">
-                Data
-                <span id="up-arrow" class="">&#9660;</span>
-                <span id="down-arrow" class="show-arrow">&#9650;</span>
-            </button>
-            <button class="btn btn-secondary toggle-button mb-3" id="filterButtons" value="date" onclick="toggleButton(this)">
-                Date
-                <span id="up-arrow" class="">&#9660;</span>
-                <span id="down-arrow" class="show-arrow">&#9650;</span>
-            </button>
+            <div class="d-flex flex-wrap">
+                <button class="btn btn-secondary toggle-button active mb-3" style="margin-right: 0.25rem;" id="filterButtons" value="az" onclick="toggleButton(this)">
+                    AZ
+                    <span id="up-arrow">&#9660;</span>
+                    <span id="down-arrow" class="show-arrow">&#9650;</span>
+                </button>
+                <button class="btn btn-secondary dropdown-toggle mb-3" style="margin-right: 0.25rem;" id="typeDropdown" value="type" data-bs-toggle="dropdown" aria-expanded="false">
+                    Type
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="typeDropdown">
+                    <li>
+                        <div class="form-check" style="margin-left: 0.75rem;">
+                            <input class="form-check-input" type="checkbox" id="dropdownGRCh38"  value="GRCh38" onclick="typeFilter(this)">
+                            <label class="form-check-label" for="dropdownGRCh38" onclick="stopEventPropagation(event)">
+                                GRCh38
+                            </label>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="form-check" style="margin-left: 0.75rem;">
+                            <input class="form-check-input" type="checkbox" id="dropdownT2T" value="T2T" onclick="typeFilter(this)">
+                            <label class="form-check-label" for="dropdownT2T" onclick="stopEventPropagation(event)">
+                                T2T
+                            </label>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="form-check" style="margin-left: 0.75rem;">
+                            <input class="form-check-input" type="checkbox" id="dropdownAny" value="Any" onclick="typeFilter(this)" checked>
+                            <label class="form-check-label" for="dropdownAny" onclick="stopEventPropagation(event)">
+                                Any
+                            </label>
+                        </div>
+                    </li>
+                </ul>
+                <button class="btn btn-secondary toggle-button mb-3" style="margin-right: 0.25rem;" id="filterButtons" value="run" onclick="toggleButton(this)">
+                    Runs
+                    <span id="up-arrow" class="">&#9660;</span>
+                    <span id="down-arrow" class="show-arrow">&#9650;</span>
+                </button>
+                <button class="btn btn-secondary toggle-button mb-3" style="margin-right: 0.25rem;" id="filterButtons" value="fastq" onclick="toggleButton(this)">
+                    Fastq
+                    <span id="up-arrow" class="">&#9660;</span>
+                    <span id="down-arrow" class="show-arrow">&#9650;</span>
+                </button>
+                <button class="btn btn-secondary toggle-button mb-3" style="margin-right: 0.25rem;" id="filterButtons" value="data" onclick="toggleButton(this)">
+                    Data
+                    <span id="up-arrow" class="">&#9660;</span>
+                    <span id="down-arrow" class="show-arrow">&#9650;</span>
+                </button>
+                <button class="btn btn-secondary toggle-button mb-3" style="margin-right: 0.25rem;" id="filterButtons" value="date" onclick="toggleButton(this)">
+                    Date
+                    <span id="up-arrow" class="">&#9660;</span>
+                    <span id="down-arrow" class="show-arrow">&#9650;</span>
+                </button>
+                <button class="btn btn-secondary mb-3 ms-auto" id="exportButton" onclick="exportGuys()">
+                    Export
+                </button>
+            </div>
 
             <div class="row" id="cardContainer">
                 {% for guy in entries %}
                 <a href="/guys/{{ guy[0] }}" id="guy-card" class="special-card-link">
-                    <div id="guy-inner-card" class="card special-card mb-3">
+                    <div id="guy-inner-card" data-value={{ guy[0] }} class="card special-card mb-3">
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-2">

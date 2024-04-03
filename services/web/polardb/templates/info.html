@@ -10,7 +10,7 @@
     <style>
         .navbar {
             background-color: #333;
-            padding-left: 1rem;
+            padding: 1rem;
         }
         
         .navbar .nav-link {
@@ -44,21 +44,27 @@
             </div>
         </nav>
 
+        <input type="text" id="guy_uid" value="{{ uid }}" style="display: none"></input>
+
         <div class="container mt-3">
             <div class="row">
                 <h1>{{ initials }} {{ id }}</h1>
             </div>
-            <ul class="nav nav-pills mb-3">
-                <li class="nav-item">
-                    <button class="nav-link active" aria-current="page" data-value="runs" onclick="switchTab(this)">Runs</button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" data-value="fastqs" onclick="switchTab(this)">Fastqs</button>
-                </li>
-                <li class="nav-item">
-                    <button class="nav-link" data-value="data-folders" onclick="switchTab(this)">Data Folders</button>
-                </li>
-            </ul>
+            <div class="d-flex flex-wrap">
+                <ul class="nav nav-pills mb-3">
+                    <li class="nav-item">
+                        <button class="nav-link active" aria-current="page" data-value="runs" onclick="switchTab(this)">Runs</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-value="fastqs" onclick="switchTab(this)">Fastqs</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-value="data-folders" onclick="switchTab(this)">Data Folders</button>
+                    </li>
+                </ul>
+                <button class="btn btn-secondary mb-3 ms-auto" onclick="exportGuys()">Export</button>
+            </div>
+            
             <div id="runs-div">
                 {% for run in runs %}
                 <div class="card special-card mb-3">

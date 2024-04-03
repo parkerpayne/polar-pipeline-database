@@ -74,13 +74,21 @@ def guys():
         stored_folders = cursor.fetchall()
         # print(stored_runs)
         for data_folder in stored_folders:
-            if not os.path.isfile(data_folder[1]):
+            if not os.path.isdir(data_folder[1]):
                 cursor.execute("DELETE FROM data_folders WHERE folder_uid = %s", (data_folder[0],))
         
-        # cursor.execute("SELECT g.uid, g.initials FROM guys g LEFT JOIN runs r ON g.uid = r.guy_uid WHERE r.run_uid IS NULL")
-        # empty_guys = cursor.fetchall()
-        # for guy in empty_guys:
-        #     cursor.execute("DELETE FROM guys WHERE uid = %s", (guy[0],))
+        cursor.execute("""
+            SELECT g.uid, g.initials 
+            FROM guys g 
+            LEFT JOIN runs r ON g.uid = r.guy_uid 
+            LEFT JOIN fastqs f ON g.uid = f.guy_uid 
+            LEFT JOIN data_folders df ON g.uid = df.guy_uid 
+            WHERE r.guy_uid IS NULL AND f.guy_uid IS NULL AND df.guy_uid IS NULL
+        """)
+        empty_guys = cursor.fetchall()
+
+        for guy in empty_guys:
+            cursor.execute("DELETE FROM guys WHERE uid = %s", (guy[0],))
 
         pattern = r'[A-Za-z]{2,3}_\d{7}'
         datepattern = r'\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}'
@@ -134,8 +142,9 @@ def guys():
                         existing_run_uid = cursor.fetchone()
 
                         if not existing_run_uid:
-                            cursor.execute("INSERT INTO runs (guy_uid, run_name, run_path, run_type, run_time) VALUES (%s, %s, %s, %s, %s)", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj))
-        
+                            cursor.execute("INSERT INTO runs (guy_uid, run_name, run_path, run_type, run_time) VALUES (%s, %s, %s, %s, %s)", (existing_uid, item, os.path.join(output_directory, item), t2t, date_obj)) 
+    
+
         if current_merged_state != cached_merged_state:
             cached_merged_state = current_merged_state
             for merged_fastq_directory in merged_fastq_directories:
@@ -159,7 +168,7 @@ def guys():
                             existing_fastq_uid = cursor.fetchone()
 
                             if not existing_fastq_uid:
-                                cursor.execute("INSERT INTO fastqs (guy_uid, fastq_name, fastq_path) VALUES (%s, %s, %s)", (existing_uid, file, path))
+                                cursor.execute("INSERT INTO fastqs (guy_uid, fastq_name, fastq_path) VALUES (%s, %s, %s)", (existing_uid, file, path)) 
 
         if current_data_state != cached_data_state:
             cached_data_state = current_data_state
@@ -184,7 +193,6 @@ def guys():
 
                         if not existing_fastq_uid:
                             cursor.execute("INSERT INTO data_folders (guy_uid, folder_name, folder_path) VALUES (%s, %s, %s)", (existing_uid, dir, path))
-
 
         # Commit the changes to the database
         conn.commit()
@@ -294,10 +302,10 @@ def info(uid):
     cursor = conn.cursor()
     fastq_pattern = r'MERGED_.*'
     try:
-        cursor.execute("SELECT initials, id FROM guys WHERE uid = %s", (uid,))
+        cursor.execute("SELECT uid, initials, id FROM guys WHERE uid = %s", (uid,))
         fetched = cursor.fetchone()
         # print(fetched)
-        initials, id = [result for result in fetched]
+        uid, initials, id = [result for result in fetched]
 
         runs = []
         cursor.execute("SELECT run_name, run_type, run_time, run_path FROM runs WHERE guy_uid = %s ORDER BY run_time", (uid,))
@@ -356,7 +364,7 @@ def info(uid):
 
     except Exception as e:
         return f"Error: {e}"
-    return render_template('info.html', initials=initials, id=id, runs=runs, fastqs=fastqs, data_folders=data_folders)
+    return render_template('info.html', initials=initials, id=id, runs=runs, fastqs=fastqs, data_folders=data_folders, uid=uid)
 
 @app.route('/runsummary', methods=['POST'])
 def runsummary():
@@ -411,15 +419,25 @@ def update_paths():
 
     return 'success'
 
-@app.route('/export')
+@app.route('/export', methods=['POST'])
 def export():
     conn = psycopg2.connect(**db_config)
     cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(uid) FROM guys')
-    uid_count = cursor.fetchone()
-    for i in range(uid_count[0]):
-        cursor.execute('SELECT * FROM guys WHERE uid=%s', (i+1,))
-        guy = cursor.fetchone()
+    guy_dict = {}
+    to_export = request.json
+    placeholders = ','.join(['%s'] * len(to_export))
+    sql = f"SELECT * FROM guys WHERE uid IN ({placeholders})"
+    cursor.execute(sql, to_export)
+    guys = cursor.fetchall()
+    sorted_guys = []
+    for uid in to_export:
+        for guy in guys:
+            if int(uid) == int(guy[0]):
+                sorted_guys.append(guy)
+                break
+    # print(sorted_guys)
+    for guy in sorted_guys:
+        # print(guy)
         guy_info = guy[1]+'_'+guy[2]
         cursor.execute('SELECT * FROM runs WHERE guy_uid=%s', (guy[0],))
         runs = cursor.fetchall()
@@ -444,6 +462,27 @@ def export():
         # print(fastq_results)
         # print(data_results)
         lengths = [len(runs_results), len(fastq_results), len(data_results)]
-        print(guy_info, lengths, max(lengths))
+        array_height = max(lengths)
+        # print(guy_info, lengths, array_height)
 
-    return jsonify('hi')
+        guy_array = []
+        for h in range(array_height):
+            row = []
+            for col in [[guy_info], runs_results, fastq_results, data_results]:
+                if h < len(col):
+                    row.append(col[h])
+                else:
+                    row.append('')
+            guy_array.append(row)
+        
+        guy_dict[guy_info] = guy_array
+
+    if not os.path.isdir('/usr/src/temp'):
+        os.mkdir('/usr/src/temp')
+    with open('/usr/src/temp/guysexport.tsv', 'w') as opened:
+        opened.write('Guy ID\tRuns\tMERGED Fastqs\tData Folders\n')
+        for guy in guy_dict:
+            for row in guy_dict[guy]:
+                opened.write('\t'.join(row)+'\n')
+
+    return send_file('/usr/src/temp/guysexport.tsv', as_attachment=True)

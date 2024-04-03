@@ -57,3 +57,34 @@ function switchTab(button) {
     document.getElementById('data-folders-div').hidden = true;
     document.getElementById(divId).hidden = false;
 }
+
+function exportGuys(){
+    var uid = document.getElementById('guy_uid').value;
+    // console.log(exportList);
+    fetch('/export', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify([uid])
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.blob();
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'polar-db-export.tsv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        // Handle error
+        console.error('Error:', error);
+    });
+}
