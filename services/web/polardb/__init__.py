@@ -296,6 +296,17 @@ def guys():
 #     except Exception as e:
 #         return f"Error: {e}"
 
+def report_finder(start_dir):
+    report_array = []
+    for item in os.listdir(start_dir):
+        if os.path.isdir(os.path.join(start_dir, item)):
+            if 'pass' not in item.lower() and 'fail' not in item.lower():
+                report_array = report_array + report_finder(os.path.join(start_dir, item))
+    for item in os.listdir(start_dir):
+        if os.path.isfile(os.path.join(start_dir, item)) and 'report' in item.lower() and item.endswith('html'):
+            return [(item, os.path.join(start_dir, item))]
+    return report_array
+
 @app.route('/guys/<uid>')
 def info(uid):
     conn = psycopg2.connect(**db_config)
@@ -360,7 +371,11 @@ def info(uid):
             data_folder = []
             data_folder.append(result[0])
             data_folder.append(result[1])
+            reports = report_finder(result[1])
+            data_folder.append(reports)
             data_folders.append(data_folder)
+
+        
 
     except Exception as e:
         return f"Error: {e}"
@@ -379,6 +394,13 @@ def runsummary():
     except Exception as e:
         error_message = 'An error occurred: ' + str(e)
         return jsonify({'error': error_message}), 500
+
+@app.route('/<path:filepath>')
+def open_html(filepath):
+    if 'report' in filepath and filepath.endswith('.html'):
+        return send_file('/'+filepath, mimetype='text/html', as_attachment=False)
+    else:
+        return 'Error: file not found or invalid'
 
 @app.route('/config')
 def config():

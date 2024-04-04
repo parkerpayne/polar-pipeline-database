@@ -151,6 +151,20 @@
                                             <th scope="row">Folder Path</th>
                                             <td class="summary-value">{{ data_folder[1] }}</td>
                                         </tr>
+                                        <tr>
+                                            <th scope="row">Reports</th>
+                                            <td>
+                                                <table class="table table-borderless">
+                                                    {% for report_file in data_folder[2] %}
+                                                        <tr>
+                                                            <td>
+                                                                <a class="btn btn-primary" href="{{ report_file[1] }}" target="blank">{{ report_file[0] }}</a>
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </table>
+                                            </td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
