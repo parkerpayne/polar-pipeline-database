@@ -29,13 +29,19 @@
     <div class="body">
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
             <a class="navbar-brand" href="{{ url_for('index') }}">Polar Database</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('guys') }}">Guys</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('prom') }}">Prom</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('t2t') }}">T2T</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('config') }}">Config</a>
@@ -123,15 +129,16 @@
                             <div class="row">
                                 <h4>{{ fastq[0] }}</h4>
                             </div>
-                            <div class="row mt-3">
-                                <table class="table table-striped table-borderless">
-                                    <tbody>
-                                        <tr>
-                                            <th scope="row">Fastq Path</th>
-                                            <td class="summary-value">{{ fastq[1] }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                            <div class="row d-flex flex-wrap mt-1">
+                                <div class="col-1">
+                                    <span><b>Fastq Path</b></span>
+                                </div>
+                                <div class="col-10">
+                                    <span class="summary-value">{{ fastq[1] }}</span>
+                                </div>
+                                <div class="col-1">
+                                    <span class="ms-auto"><b>{{ fastq[2] }}GB</b></span>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Polar Database</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <style>
+        .navbar {
+            background-color: #333;
+            padding: 1rem;
+        }
+        
+        .navbar .nav-link {
+            color: #ddd;
+        }
+        
+        .navbar .nav-link:hover {
+            color: #fff;
+        }
+        .summary-value {
+            word-break: break-all;
+        }
+        .result-table {
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="body">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Polar Database</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('guys') }}">Guys</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('prom') }}">Prom</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('t2t') }}"><b>T2T</b></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('config') }}">Config</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <input type="text" id="guy_uid" value="{{ uid }}" style="display: none"></input>
+
+        <div class="container mt-3">
+            <div class="row">
+                <h1>{{ initials }} {{ id }}</h1>
+            </div>
+            <div class="d-flex flex-wrap">
+                <ul class="nav nav-pills mb-3">
+                    <li class="nav-item">
+                        <button class="nav-link active" aria-current="page" data-value="azfabc-prot" onclick="switchTab(this)">AZFabc_protein</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-value="del-assay" onclick="switchTab(this)">del_assay_MORE</button>
+                    </li>
+                </ul>
+                <button class="btn btn-secondary mb-3 ms-auto" onclick="exportGuys()" hidden>Export</button>
+            </div>
+            
+            <div class="result-table" id="azfabc-prot-div">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            {% for col in azfabc_prot[0].split('\t') %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in azfabc_prot[1] %}
+                        <tr>
+                            {% for cell in row %}
+                            <td>{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="result-table" id="del-assay-div" hidden>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            {% for col in del_assay[0].split('\t') %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in del_assay[1] %}
+                        <tr>
+                            {% for cell in row %}
+                            <td>{{ cell }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="summaryModal" tabindex="-1" aria-labelledby="summaryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="summaryModalLabel">Run Summary</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="modalBody">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>
+                                    Statistic
+                                </th>
+                                <th>
+                                    Value
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="runSummaryTable">
+                            <tr>
+                                <td>
+                                    Key
+                                </td>
+                                <td>
+                                    Value
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='js/t2t_info.js') }}"></script>
+</body>
+</html>

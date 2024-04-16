@@ -28,6 +28,13 @@ CREATE TABLE data_folders (
     folder_path TEXT NOT NULL
 );
 
+CREATE TABLE lines_t2t {
+    file_id SERIAL PRIMARY KEY,
+    guy_uid INTEGER REFERENCES guys(uid),
+    intersection TEXT NOT NULL,
+    lines INTEGER NOT NULL
+}
+
 -- INSERT INTO guys(
 --         uid, initials, id
 --     ) values (

@@ -1,11 +1,11 @@
 import sys
 sys.path.append('/usr/src/app/polarpipeline')
-
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import psycopg2
 import yaml
+import time
 import os
 import re
 
@@ -244,57 +244,6 @@ def guys():
     except Exception as e:
         return f"Error: {e}"
     
-# @app.route('/guys')
-# def guys():
-#     try:
-#         conn = psycopg2.connect(**db_config)
-#         cursor = conn.cursor()
-#             # Retrieve all entries from the database
-#         cursor.execute("SELECT * FROM guys ORDER BY initials")
-#         select = cursor.fetchall()
-#         entries = []
-#         for line in select:
-
-#             try:
-#                 cursor.execute("SELECT DISTINCT run_type FROM runs WHERE guy_uid = %s", (line[0],))
-#                 all_run_types = cursor.fetchall()
-#                 all_run_types_flat = [run_type[0] for run_type in all_run_types]
-#                 cursor.execute("SELECT COUNT(*) FROM runs WHERE guy_uid = %s;", (line[0],))
-#                 num_runs_for_guy = cursor.fetchone()[0]
-#                 cursor.execute("SELECT COUNT(*) FROM fastqs WHERE guy_uid = %s;", (line[0],))
-#                 num_fastqs_for_guy = cursor.fetchone()[0]
-#                 cursor.execute("SELECT COUNT(*) FROM data_folders WHERE guy_uid = %s;", (line[0],))
-#                 num_data_folders_for_guy = cursor.fetchone()[0]
-#                 # print(all_run_types_flat)
-#             except Exception as e:
-#                 return f"Error: {e}"
-#             entry = []
-#             entry.append(line[0])
-#             entry.append(line[1])
-#             entry.append(line[2])
-#             entry.append(num_runs_for_guy)
-#             if 'GRCh38' in all_run_types_flat:
-#                 entry.append('checked')
-#             else:
-#                 entry.append('')
-#             if 'T2T' in all_run_types_flat:
-#                 entry.append('checked')
-#             else:
-#                 entry.append('')
-#             entry.append(num_fastqs_for_guy)
-#             entry.append(line[3].strftime('%Y-%m-%d'))
-#             entry.append(num_data_folders_for_guy)
-#             entries.append(entry)
-
-#         # print(entries)
-#         cursor.close()
-#         conn.close()
-
-#         guylen = len(entries)
-
-#         return render_template('guys.html', entries=entries, guylen=guylen)
-#     except Exception as e:
-#         return f"Error: {e}"
 
 def report_finder(start_dir):
     report_array = []
@@ -304,8 +253,11 @@ def report_finder(start_dir):
                 report_array = report_array + report_finder(os.path.join(start_dir, item))
     for item in os.listdir(start_dir):
         if os.path.isfile(os.path.join(start_dir, item)) and 'report' in item.lower() and item.endswith('html'):
-            return [(item, os.path.join(start_dir, item))]
+            return [(item.replace('.html', ''), os.path.join(start_dir, item))]
     return report_array
+
+def sort_by_basename(item):
+    return os.path.basename(item[1])
 
 @app.route('/guys/<uid>')
 def info(uid):
@@ -362,6 +314,8 @@ def info(uid):
             fastq = []
             fastq.append(result[0])
             fastq.append(result[1])
+            fastq_stats = os.stat(result[1])
+            fastq.append(str(round(fastq_stats.st_size/(1024*1024*1024), 2)))
             fastqs.append(fastq)
 
         cursor.execute("SELECT folder_name, folder_path FROM data_folders WHERE guy_uid = %s", (uid,))
@@ -375,11 +329,11 @@ def info(uid):
             data_folder.append(reports)
             data_folders.append(data_folder)
 
-        
+        # print(data_folders)        
 
     except Exception as e:
         return f"Error: {e}"
-    return render_template('info.html', initials=initials, id=id, runs=runs, fastqs=fastqs, data_folders=data_folders, uid=uid)
+    return render_template('info.html', initials=initials, id=id, runs=runs, fastqs=sorted(fastqs, key=sort_by_basename), data_folders=sorted(data_folders, key=sort_by_basename), uid=uid)
 
 @app.route('/runsummary', methods=['POST'])
 def runsummary():
@@ -493,6 +447,8 @@ def export():
             for col in [[guy_info], runs_results, fastq_results, data_results]:
                 if h < len(col):
                     row.append(col[h])
+                elif col == [guy_info]:
+                    row.append(guy_info)
                 else:
                     row.append('')
             guy_array.append(row)
@@ -508,3 +464,207 @@ def export():
                 opened.write('\t'.join(row)+'\n')
 
     return send_file('/usr/src/temp/guysexport.tsv', as_attachment=True)
+
+class toDoListGuy:
+    def __init__(self, identifier, needs_merged=True, needs_pipeline=True,
+                 needs_t2t_pipeline=True, needs_fastqs_zipped=True, needs_data_to_syn=True,
+                 needs_zipped_merge_to_syn=True):
+        self.identifier = identifier
+        self.needs_merged = needs_merged
+        self.needs_pipeline = needs_pipeline
+        self.needs_t2t_pipeline = needs_t2t_pipeline
+        self.needs_fastqs_zipped = needs_fastqs_zipped
+        self.needs_data_to_syn = needs_data_to_syn
+        self.needs_zipped_merge_to_syn = needs_zipped_merge_to_syn
+    
+    def ready_to_delete(self):
+        if self.needs_merged:
+            return False
+        if self.needs_pipeline:
+            return False
+        if self.needs_t2t_pipeline:
+            return False
+        if self.needs_fastqs_zipped:
+            return False
+        if self.needs_data_to_syn:
+            return False
+        if self.needs_zipped_merge_to_syn:
+            return False
+        return True
+    
+    def priority(self):
+        priority = 0
+        if self.needs_merged:
+            priority += 1
+        if self.needs_pipeline:
+            priority += 1
+        if self.needs_t2t_pipeline:
+            priority += 1
+        if self.needs_fastqs_zipped:
+            priority += 1
+        if self.needs_data_to_syn:
+            priority += 1
+        if self.needs_zipped_merge_to_syn:
+            priority += 1
+        return priority
+
+    def print(self):
+        print('identifier=',self.identifier,end=' ')
+        print('needs_merged=',self.needs_merged,end=' ')
+        print('needs_pipeline=',self.needs_pipeline,end=' ')
+        print('needs t2t_pipeline=',self.needs_t2t_pipeline,end=' ')
+        print('needs_fastqs_zipped=',self.needs_fastqs_zipped,end=' ')
+        print('needs_data_to_syn=',self.needs_data_to_syn,end=' ')
+        print('needs_zipped_merge_to_syn=',self.needs_zipped_merge_to_syn,end='\n')
+
+def izipped(path):
+    zipped = False
+    for item in os.listdir(path):
+        if os.path.isdir(os.path.join(path, item)) and 'report' not in item.lower() and 'pod5' not in item.lower():
+            return izipped(os.path.join(path, item))
+        elif os.path.isfile(os.path.join(path, item)):
+            if 'fastq' in item:
+                if item.endswith('.gz'):
+                    return True
+                else:
+                    return False
+    return zipped
+
+def sort_by_priority(item):
+    return item.priority()
+
+@app.route('/prom')
+def prom():
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
+    gentlemen = {}
+    pattern = r'[A-Za-z]{2,3}_\d{7}'
+    try:
+        for thing in os.listdir('/mnt/prom'):
+            if not os.path.isdir(os.path.join('/mnt/prom',thing)): continue
+            matches = re.findall(pattern, thing)
+            if matches and 'bad' not in thing.lower() and 'incomplete' not in thing.lower() and 'copy' not in thing.lower():
+                # print('guy found:', matches[0], flush=True)
+                initials, _id = matches[0].split('_')
+                cursor.execute("SELECT COUNT(r.*) FROM runs r JOIN guys g ON r.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s AND r.run_type = %s", (initials, _id, 'GRCh38'))
+                runs = cursor.fetchone()
+                cursor.execute("SELECT COUNT(r.*) FROM runs r JOIN guys g ON r.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s AND r.run_type = %s", (initials, _id, 'T2T'))
+                t2t_runs = cursor.fetchone()
+                cursor.execute("SELECT COUNT(f.*) FROM fastqs f JOIN guys g ON f.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s", (initials, _id))
+                fastqs = cursor.fetchone()
+                cursor.execute("SELECT COUNT(d.*) FROM data_folders d JOIN guys g ON d.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s", (initials, _id))
+                datas = cursor.fetchone()
+                # print('queries done for', matches[0])
+                gentlemen[matches[0]] = toDoListGuy(matches[0], needs_zipped_merge_to_syn=not bool(int(fastqs[0])), needs_pipeline=not bool(int(runs[0])), needs_t2t_pipeline=not bool(int(t2t_runs[0])), needs_data_to_syn=not bool(int(datas[0])), needs_fastqs_zipped=not izipped(os.path.join('/mnt/prom', thing)))
+                # gentlemen[matches[0]] = toDoListGuy(matches[0], needs_zipped_merge_to_syn=bool(int(fastqs[0])), needs_pipeline=bool(int(runs[0])), needs_data_to_syn=bool(int(datas[0])))
+                # print('created class for', matches[0])
+
+    except Exception as e:
+        conn.rollback()
+        print(e)
+
+    for file in os.listdir('/mnt/prom/1.4.MERGED_fastq'):
+        matches = re.findall(pattern, file)
+        if matches:
+            identification = matches[0]
+            if identification in gentlemen:
+                gentlemen[identification].needs_merged = False
+
+    gentlemen_list = []
+    delete_list = []
+    for item in gentlemen:
+        if not gentlemen[item].ready_to_delete():
+            gentlemen_list.append(gentlemen[item])
+        else:
+            delete_list.append(gentlemen[item])
+
+
+    # print(os.listdir('/mnt/prom'))
+    return render_template('prom.html', gentlemen_list=sorted(gentlemen_list, key=sort_by_priority)[::-1], delete_list=delete_list)
+
+def count_t2t_lines(path):
+    count = 0
+    for line in open(path, 'r'):
+        if line.strip().startswith('#'):
+            continue
+        count += 1
+    return count
+
+def sort_by_date(item):
+    return item[3]
+
+@app.route('/t2t')
+@app.route('/t2t/')
+def t2t():
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute("SELECT run_path, guy_uid FROM runs WHERE run_type = %s", ('T2T',))
+    results = cursor.fetchall()
+    guys = []
+    for result in results:
+        row = []
+        path, uid = result
+        cursor.execute("SELECT initials, id, seq_date FROM guys WHERE uid = %s", (uid,))
+        guy_info = cursor.fetchone()
+        initials, id, seq_date = guy_info
+        linecounts = {}
+        intersect_path = ''
+        for item in os.listdir(path):
+            if item.endswith('intersect'):
+                intersect_path = os.path.join(path, item)
+        if intersect_path:
+            for file in os.listdir(intersect_path):
+                if file.endswith('.vcf'):
+                    if 'del_assay_MORE.vcf' in file:
+                        linecounts['del_assay_MORE'] = count_t2t_lines(os.path.join(intersect_path, file))
+                    elif 'AZFabc_protein.vcf' in file:
+                        linecounts['AZFabc_protein'] = count_t2t_lines(os.path.join(intersect_path, file))
+                    elif 'AZFabc.vcf' in file:
+                        linecounts['AZFabc'] = count_t2t_lines(os.path.join(intersect_path, file))
+        row.append(uid)
+        row.append(initials)
+        row.append(id)
+        row.append(seq_date)
+        row.append(linecounts)
+        present = False
+        for item in guys:
+            if row[0] == item[0]:
+                present = True
+        if present == False and linecounts:
+            guys.append(row)
+
+    
+    
+    return render_template('t2t.html', guys=sorted(guys, key=sort_by_date)[::-1])
+
+@app.route('/t2t/<uid>')
+def t2t_info(uid):
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
+    cursor.execute('SELECT run_path FROM runs WHERE guy_uid = %s AND run_type = %s', (uid, 'T2T',))
+    result = cursor.fetchone()[0]
+    del_assay = []
+    del_assay_header = ''
+    azfabc_prot = []
+    azfabc_prot_header = ''
+    for guy_path in os.listdir(result):
+        if 'intersect' in guy_path and os.path.isdir(os.path.join(result, guy_path)):
+            intersect_path = os.path.join(result, guy_path)
+            for file in os.listdir(intersect_path):
+                if file.endswith('del_assay_MORE.vcf'):
+                    for line in open(os.path.join(intersect_path, file)):
+                        if not line.startswith("##"):
+                            if line.startswith("#CHROM"):
+                                del_assay_header = line
+                            else:
+                                del_assay.append(line.strip().split('\t'))
+                elif file.endswith('AZFabc_protein.vcf'):
+                    for line in open(os.path.join(intersect_path, file)):
+                        if not line.startswith("##"):
+                            if line.startswith("#CHROM"):
+                                azfabc_prot_header = line
+                            else:
+                                azfabc_prot.append(line.strip().split('\t'))
+    # print(del_assay)
+    # print(azfabc_prot)
+    return render_template('t2t_info.html', del_assay=(del_assay_header, del_assay), azfabc_prot=(azfabc_prot_header, azfabc_prot))
