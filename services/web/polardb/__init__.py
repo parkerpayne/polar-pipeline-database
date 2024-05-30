@@ -42,8 +42,7 @@ cached_pipeline_state = []
 cached_merged_state = []
 cached_data_state = []
 
-@app.route('/guys')
-def guys():
+def updateDB():
     global cached_pipeline_state
     global cached_merged_state
     global cached_data_state
@@ -196,7 +195,19 @@ def guys():
 
         # Commit the changes to the database
         conn.commit()
-        
+    except Exception as e:
+        return f"Error: {e}"
+    
+
+@app.route('/guys')
+def guys():
+
+    conn = psycopg2.connect(**db_config)
+    cursor = conn.cursor()
+
+    updateDB()
+    
+    try:
         # Retrieve all entries from the database
         cursor.execute("SELECT * FROM guys ORDER BY initials")
         select = cursor.fetchall()
@@ -466,7 +477,7 @@ def export():
     return send_file('/usr/src/temp/guysexport.tsv', as_attachment=True)
 
 class toDoListGuy:
-    def __init__(self, identifier, needs_merged=True, needs_pipeline=True,
+    def __init__(self, identifier, prom_path, syn_path, needs_merged=True, needs_pipeline=True,
                  needs_t2t_pipeline=True, needs_fastqs_zipped=True, needs_data_to_syn=True,
                  needs_zipped_merge_to_syn=True):
         self.identifier = identifier
@@ -476,6 +487,9 @@ class toDoListGuy:
         self.needs_fastqs_zipped = needs_fastqs_zipped
         self.needs_data_to_syn = needs_data_to_syn
         self.needs_zipped_merge_to_syn = needs_zipped_merge_to_syn
+        self.prom_path = prom_path
+        self.syn_path = syn_path
+        self.data_matches = False
     
     def ready_to_delete(self):
         if self.needs_merged:
@@ -507,6 +521,12 @@ class toDoListGuy:
         if self.needs_zipped_merge_to_syn:
             priority += 1
         return priority
+    
+    def set_data_matches(self, val):
+        self.data_matches = val
+
+    def get_data_matches(self):
+        return self.data_matches
 
     def print(self):
         print('identifier=',self.identifier,end=' ')
@@ -533,11 +553,44 @@ def izipped(path):
 def sort_by_priority(item):
     return item.priority()
 
+@app.route('/comparedirectories', methods=['POST'])
+def compare_directories():
+    data = request.get_json()
+    dir1 = data.get('prom')
+    dir2 = data.get('syn')
+    print(dir1, dir2)
+    def get_directory_info(directory):
+        file_count = 0
+        total_size = 0
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                file_count += 1
+                file_path = os.path.join(root, file)
+                file_size = os.path.getsize(file_path)
+                total_size += file_size
+        print(file_count, total_size)
+        return file_count, total_size
+    file_count1, total_size1 = get_directory_info(dir1)
+    file_count2, total_size2 = get_directory_info(dir2)
+    
+    errors = []
+    if file_count1 != file_count2:
+        errors.append('file_count')
+    if total_size1 != total_size2:
+        errors.append('file_size')
+    if errors:
+        return jsonify(errors)
+    return jsonify(['success'])
+
 @app.route('/prom')
 def prom():
+
+    updateDB()
+
     conn = psycopg2.connect(**db_config)
     cursor = conn.cursor()
     gentlemen = {}
+    gentlemen_paths = {}
     pattern = r'[A-Za-z]{2,3}_\d{7}'
     try:
         for thing in os.listdir('/mnt/prom'):
@@ -555,7 +608,14 @@ def prom():
                 cursor.execute("SELECT COUNT(d.*) FROM data_folders d JOIN guys g ON d.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s", (initials, _id))
                 datas = cursor.fetchone()
                 # print('queries done for', matches[0])
-                gentlemen[matches[0]] = toDoListGuy(matches[0], needs_zipped_merge_to_syn=not bool(int(fastqs[0])), needs_pipeline=not bool(int(runs[0])), needs_t2t_pipeline=not bool(int(t2t_runs[0])), needs_data_to_syn=not bool(int(datas[0])), needs_fastqs_zipped=not izipped(os.path.join('/mnt/prom', thing)))
+                cursor.execute("SELECT d.folder_path FROM data_folders d JOIN guys g ON d.guy_uid = g.uid WHERE g.initials = %s AND g.id = %s", (initials, _id))
+                paths = cursor.fetchone()
+                if paths:
+                    path = paths[0]
+                else:
+                    path = ''
+
+                gentlemen[matches[0]] = toDoListGuy(matches[0], os.path.join('/mnt/prom',thing), path, needs_zipped_merge_to_syn=not bool(int(fastqs[0])), needs_pipeline=not bool(int(runs[0])), needs_t2t_pipeline=not bool(int(t2t_runs[0])), needs_data_to_syn=not bool(int(datas[0])), needs_fastqs_zipped=not izipped(os.path.join('/mnt/prom', thing)))
                 # gentlemen[matches[0]] = toDoListGuy(matches[0], needs_zipped_merge_to_syn=bool(int(fastqs[0])), needs_pipeline=bool(int(runs[0])), needs_data_to_syn=bool(int(datas[0])))
                 # print('created class for', matches[0])
 
@@ -578,7 +638,6 @@ def prom():
         else:
             delete_list.append(gentlemen[item])
 
-
     # print(os.listdir('/mnt/prom'))
     return render_template('prom.html', gentlemen_list=sorted(gentlemen_list, key=sort_by_priority)[::-1], delete_list=delete_list)
 
@@ -596,6 +655,9 @@ def sort_by_date(item):
 @app.route('/t2t')
 @app.route('/t2t/')
 def t2t():
+
+    updateDB()
+
     conn = psycopg2.connect(**db_config)
     cursor = conn.cursor()
     cursor.execute("SELECT run_path, guy_uid FROM runs WHERE run_type = %s", ('T2T',))

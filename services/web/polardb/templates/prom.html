@@ -26,6 +26,102 @@
         .disable-click {
             pointer-events: none;
         }
+        .delete-card {
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+        .delete-card:hover {
+            cursor: pointer;
+            border-color: #77adff;
+            box-shadow: 0 0 10px 5px #60aaff;
+        }
+        .delete-card-contents{
+            transition: filter 0.3s ease-in-out;
+        }
+        .delete-card:hover .delete-card-contents{
+            filter: blur(8px);
+        }
+        .delete-card:hover .compare-text {
+            opacity: 1; 
+        }
+        @keyframes pulseBackground {
+            0% {
+                background-color: white;
+            }
+            50% {
+                background-color: #bddcff;
+            }
+            100% {
+                background-color: white;
+            }
+        }
+        @keyframes pulseBackground2 {
+            0% {
+                background-color: white;
+            }
+            50% {
+                background-color: #bddcff;
+            }
+            100% {
+                background-color: white;
+            }
+        }
+        .thinking-card {
+            animation-name: pulseBackground;
+            animation-duration: 2s;
+        }
+        .thinking-card-alt{
+            animation-name: pulseBackground2;
+        }
+        @keyframes shiftGreen {
+            0% {
+                background-color: white;
+            }
+            100% {
+                background-color: #acffa1;
+            }
+        }
+        .correct {
+            animation: shiftGreen 1s;
+            background-color: #acffa1;
+        }
+        @keyframes shiftRed {
+            0% {
+                background-color: white;
+            }
+            100% {
+                background-color: #ff9898;
+            }
+        }
+        .incorrect {
+            animation: shiftRed 1s;
+            background-color: #ff9898;
+        }
+        .incorrect:hover {
+            cursor: pointer;
+            /* border-color: #77adff; */
+            /* box-shadow: 0 0 10px 5px #60aaff; */
+        }
+        .incorrect-contents{
+            transition: filter 0.3s ease-in-out;
+        }
+        .incorrect:hover .delete-card-contents{
+            filter: blur(8px);
+        }
+        .incorrect:hover .compare-text {
+            opacity: 1; 
+        }
+
+        .compare-text {
+            position: absolute;
+            top: 50%; 
+            left: 50%;
+            transform: translate(-50%, -50%); 
+            text-align: center;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
     </style>
 </head>
 <body>
@@ -146,58 +242,75 @@
             {% for guy in delete_list %}
             {% if loop.index0 % 3 == 0 %}<div class="row">{% endif %}
             <div class="col-md-4">
-                <div class="card mb-3">
+                <div class="card delete-card mb-3" data-value="{{ guy.prom_path }},{{ guy.syn_path }}" onclick="compareDirectories(this)">
                     <div class="card-body">
-                        <h4>{{ guy.identifier }}</h4>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_merged" id="{{ guy.identifier }}_merged" {% if not guy.needs_merged %}checked{% endif %}>
-                                    <label class="form-check-label disable-click" for="{{ guy.identifier }}_merged">
-                                        Individual Fastqs Merged
-                                    </label>
+                        <div class="delete-card-contents">
+                            <h4>{{ guy.identifier.replace('_', ' ') }}</h4>
+                            <input id="{{ guy.identifier}}_prom_path" value="" hidden></input>
+                            <input id="{{ guy.identifier}}_syn_path" value="{{ guy.syn_path }}" hidden></input>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_merged" id="{{ guy.identifier }}_merged" {% if not guy.needs_merged %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_merged">
+                                            Individual Fastqs Merged
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_pipeline" id="{{ guy.identifier }}_pipeline" {% if not guy.needs_pipeline %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_pipeline">
+                                            Fastq Run through Pipeline
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_t2t_pipeline" id="{{ guy.identifier }}_t2t_pipeline" {% if not guy.needs_t2t_pipeline %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_t2t_pipeline">
+                                            Fastq Run through T2T Pipeline
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_needs_fastqs_zipped" id="{{ guy.identifier }}_needs_fastqs_zipped" {% if not guy.needs_fastqs_zipped %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_needs_fastqs_zipped">
+                                            Individual Fastqs Zipped
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_needs_data_to_syn" id="{{ guy.identifier }}_needs_data_to_syn" {% if not guy.needs_data_to_syn %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_needs_data_to_syn">
+                                            Merged Fastq Copied to Synology
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_False needs_zipped_merge_to_syn" id="{{ guy.identifier }}_False needs_zipped_merge_to_syn" {% if not guy.needs_zipped_merge_to_syn %}checked{% endif %}>
+                                        <label class="form-check-label disable-click" for="{{ guy.identifier }}_False needs_zipped_merge_to_syn">
+                                            Data Folder Copied to Synology
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_pipeline" id="{{ guy.identifier }}_pipeline" {% if not guy.needs_pipeline %}checked{% endif %}>
-                                    <label class="form-check-label disable-click" for="{{ guy.identifier }}_pipeline">
-                                        Fastq Run through Pipeline
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_needs_fastqs_zipped" id="{{ guy.identifier }}_needs_fastqs_zipped" {% if not guy.needs_fastqs_zipped %}checked{% endif %}>
-                                    <label class="form-check-label disable-click" for="{{ guy.identifier }}_needs_fastqs_zipped">
-                                        Individual Fastqs Zipped
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_needs_data_to_syn" id="{{ guy.identifier }}_needs_data_to_syn" {% if not guy.needs_data_to_syn %}checked{% endif %}>
-                                    <label class="form-check-label disable-click" for="{{ guy.identifier }}_needs_data_to_syn">
-                                        Merged Fastq Copied to Synology
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="form-check">
-                                    <input class="form-check-input disable-click" type="radio" name="{{ guy.identifier }}_False needs_zipped_merge_to_syn" id="{{ guy.identifier }}_False needs_zipped_merge_to_syn" {% if not guy.needs_zipped_merge_to_syn %}checked{% endif %}>
-                                    <label class="form-check-label disable-click" for="{{ guy.identifier }}_False needs_zipped_merge_to_syn">
-                                        Data Folder Copied to Synology
-                                    </label>
-                                </div>
-                            </div>
+                        <div class="compare-text">
+                            <h5 id="hover-text">Run Data Folder Comparison</h5>
                         </div>
                     </div>
                 </div>
