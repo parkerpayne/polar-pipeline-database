@@ -3,17 +3,19 @@ version: '3.8'
 services:
   web:
     build: ./services/web
-    command: python manage.py run -h 0.0.0.0
+    command: python manage.py run -h 0.0.0.0 -p 6000
     volumes:
       - ./services/web/:/usr/src/app
-      - ./mnt:/mnt
+      - /mnt:/mnt
     ports:
-      - 5000:5000
+      - 6000:6000
     env_file:
       - ./services/.env.dev
     networks:
       static-network:
         ipv4_address: 10.20.0.88
+    labels:
+      com.polar.database.service: "web"
   db:
     image: postgres:13
     volumes:
@@ -28,6 +30,8 @@ services:
     networks:
       static-network:
         ipv4_address: 10.20.0.66
+    labels:
+      com.polar.database.service: "db"
 networks:
   static-network:
     ipam:
