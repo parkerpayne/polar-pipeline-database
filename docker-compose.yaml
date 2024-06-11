@@ -1,19 +1,17 @@
-version: '3.8'
-
 services:
   web:
     build: ./services/web
-    command: python manage.py run -h 0.0.0.0 -p 6000
+    command: python manage.py run -h 0.0.0.0
     volumes:
       - ./services/web/:/usr/src/app
       - /mnt:/mnt
     ports:
-      - 6000:6000
+      - 5001:5000
     env_file:
       - ./services/.env.dev
     networks:
       static-network:
-        ipv4_address: 10.20.0.88
+        ipv4_address: 10.20.2.44
     labels:
       com.polar.database.service: "web"
   db:
@@ -26,17 +24,17 @@ services:
       - POSTGRES_PASSWORD=polardbpswd
       - POSTGRES_DB=polardbDB
     ports:
-      - 5432:5432
+      - 5433:5432
     networks:
       static-network:
-        ipv4_address: 10.20.0.66
+        ipv4_address: 10.20.2.33
     labels:
       com.polar.database.service: "db"
 networks:
   static-network:
     ipam:
       config:
-        - subnet: 10.20.0.0/16
+        - subnet: 10.20.2.0/24
 volumes:
   postgres_data:
   output:
