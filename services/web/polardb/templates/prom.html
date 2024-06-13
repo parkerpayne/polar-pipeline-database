@@ -153,6 +153,22 @@
             <h1>Prom Files</h1>
         </div>
 
+        <div class="container mt-3">
+            <div class="row">
+                <div class="container">
+                    <div class="progress" role="progressbar" aria-label="Basic example" aria-valuenow="{{ usage[0] }}" aria-valuemin="0" aria-valuemax="1">
+                        <div class="progress-bar" style="width: {{ usage[0]*100 }}%"></div>
+                    </div> 
+                </div>
+                
+            </div>
+            <div class="row">
+                <div class="container">
+                    <button class="btn btn-light" disabled>{{ usage[1] }}/{{ usage[2] }} TB</button>
+                </div>
+            </div> 
+        </div>
+
         <div class="container d-flex flex-wrap mt-3">
             <ul class="nav nav-pills mb-3">
                 <li class="nav-item">

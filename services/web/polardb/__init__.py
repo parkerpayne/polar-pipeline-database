@@ -4,6 +4,8 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import psycopg2
+import shutil
+import math
 import yaml
 import time
 import os
@@ -582,8 +584,16 @@ def compare_directories():
         return jsonify(errors)
     return jsonify(['success'])
 
+
+def prom_space():
+    usage = shutil.disk_usage('/mnt/prom')
+    TB = math.pow(1024, 4)
+    return [usage.used/usage.total, round(usage.used/TB, 2), round(usage.total/TB, 2)]
+
 @app.route('/prom')
 def prom():
+
+    usage = prom_space()
 
     updateDB()
 
@@ -639,7 +649,7 @@ def prom():
             delete_list.append(gentlemen[item])
 
     # print(os.listdir('/mnt/prom'))
-    return render_template('prom.html', gentlemen_list=sorted(gentlemen_list, key=sort_by_priority)[::-1], delete_list=delete_list)
+    return render_template('prom.html', gentlemen_list=sorted(gentlemen_list, key=sort_by_priority)[::-1], delete_list=delete_list, usage=usage)
 
 def count_t2t_lines(path):
     count = 0
